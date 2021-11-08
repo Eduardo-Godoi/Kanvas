@@ -2,6 +2,7 @@ import pdb
 
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
+from django.db import IntegrityError
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
@@ -12,11 +13,14 @@ from users.serializers import UserSerializer
 
 class CreateUserView(APIView):
     def post(self, request):
-        data = request.data
-        user = User.objects.create_user(**data)
-        serialized = UserSerializer(user)
+        try:
+            data = request.data
+            user = User.objects.create_user(**data)
+            serialized = UserSerializer(user)
 
-        return Response(serialized.data, status=status.HTTP_201_CREATED)
+            return Response(serialized.data, status=status.HTTP_201_CREATED)
+        except IntegrityError:
+            return Response({'conflict': 'User already registered'}, status=status.HTTP_409_CONFLICT)
 
 
 class LoginView(APIView):
