@@ -14,23 +14,31 @@ from users.serializers import UserSerializer
 class CreateUserView(APIView):
     def post(self, request):
         try:
-            data = request.data
-            user = User.objects.create_user(**data)
-            serialized = UserSerializer(user)
 
-            return Response(serialized.data, status=status.HTTP_201_CREATED)
+            user = User.objects.create_user(**request.data)
+            serializer = UserSerializer(user)
+            output = {
+                **serializer.data,
+                'is_staff': user.is_staff,
+                'is_superuser': user.is_superuser
+            }
+
+            return Response(output, status=status.HTTP_201_CREATED)
         except IntegrityError:
-            return Response({'conflict': 'User already registered'}, status=status.HTTP_409_CONFLICT)
-
+            return Response({'msg': 'User already exists'}, status=status.HTTP_409_CONFLICT)
 
 class LoginView(APIView):
     def post(self, request):
-        data = request.data
-        user = authenticate(**data)
+        try:
+            username = request.data['username']
+            password = request.data['password']
 
-        if user:
-            token = Token.objects.get_or_create(user=user)[0]
-            return Response({"token": token.key}, status=status.HTTP_200_OK)
+            user = authenticate(username=username, password=password)
 
-        return Response({'message': 'Invalid Credentials'},
-                        status=status.HTTP_401_UNAUTHORIZED)
+            if user != None:
+                token = Token.objects.get_or_create(user=user)[0]
+                return Response({'token': token.key})
+            
+            return Response({'msg': 'Wrong username or password'}, status=status.HTTP_401_UNAUTHORIZED)
+        except KeyError as e:
+            return Response({'msg': f'{str(e)} is missing'})

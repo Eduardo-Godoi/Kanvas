@@ -1,11 +1,10 @@
 from django.contrib.auth.models import User
-from django.db import IntegrityError
+from django.db.utils import IntegrityError
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from users.permissions import Facilitator, Instructor
+from users.permissions import Instructor
 
 from .models import Course
 from .serializers import CourseSerializer
@@ -17,8 +16,7 @@ class RegisterCourse(APIView):
 
     def post(self, request):
         try:
-            name = request.data['name']
-            course = Course.objects.create(name=name)
+            course = Course.objects.create(name=request.data['name'])
             serializer = CourseSerializer(course)
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -26,13 +24,12 @@ class RegisterCourse(APIView):
             return Response({'error': 'Course with this name already exists'},
                             status=status.HTTP_400_BAD_REQUEST)
         except KeyError as e:
-            return Response({'errors': f'{str(e)} is missing'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response({'errors': f'{str(e)} is missing'})
 
     def get(self, request):
         courses = Course.objects.all()
-        serialized = CourseSerializer(courses, many=True)
-        return Response(serialized.data, status=status.HTTP_200_OK)
+        serializer = CourseSerializer(courses, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CourseViewById(APIView):
@@ -42,20 +39,20 @@ class CourseViewById(APIView):
     def put(self, request, course_id):
         try:
             course = Course.objects.get(id=course_id)
-            name = request.data['name']
-            course.name = name
+            course.name = request.data['name']
             course.save()
-            serialeized = CourseSerializer(course)
+            serializer = CourseSerializer(course)
 
-            return Response(serialeized.data, status=status.HTTP_200_OK)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except KeyError as e:
+            return Response({'errors': f'{str(e)} is missing'})
         except Course.DoesNotExist:
-            return Response({'error': 'The last course_id does not exist'},
+            return Response({'errors': 'invalid course_id'},
                             status=status.HTTP_404_NOT_FOUND)
         except IntegrityError:
             return Response({'error': 'Course with this name already exists'},
                             status=status.HTTP_400_BAD_REQUEST)
-        except KeyError as e:
-            return Response({'errors': f'{str(e)} is missing'})
 
     def get(self, request, course_id):
         try:
@@ -95,15 +92,15 @@ class Registration(APIView):
                 course.users.add(user)
 
             course.save()
-            serialized = CourseSerializer(course)
+            serializer = CourseSerializer(course)
 
-            return Response(serialized.data)
+            return Response(serializer.data)
+        except Course.DoesNotExist:
+            return Response({'errors': 'invalid course_id'},
+                            status=status.HTTP_404_NOT_FOUND)
+        except User.DoesNotExist:
+            return Response({'errors': 'invalid user_id list'},
+                            status=status.HTTP_404_NOT_FOUND)
         except TypeError:
             return Response({'errors': 'users_id must be a list'},
                             status=status.HTTP_400_BAD_REQUEST)
-        except Course.DoesNotExist:
-            return Response({'error': 'invalid course_id'},
-                            status=status.HTTP_404_NOT_FOUND)
-        except User.DoesNotExist:
-            return Response({'error': 'invalid user_id list'},
-                            status=status.HTTP_404_NOT_FOUND)
