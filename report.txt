@@ -69,7 +69,7 @@ test_update_course_name (test_api.TestCourseView) ... ok
 test_whether_a_list_is_entered_to_enroll_students_in_the_course (test_api.TestCourseView) ... ok
 
 ----------------------------------------------------------------------
-Ran 35 tests in 20.645s
+Ran 35 tests in 20.865s
 
 OK
 Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
